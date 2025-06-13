@@ -7,3 +7,4 @@ groq
 tqdm
 python-dotenv
 python-multipart
+pymongo
