@@ -196,3 +196,7 @@ cython_debug/
 
 # macOS
 .DS_Store
+
+
+test.py
+data/
