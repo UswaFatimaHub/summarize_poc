@@ -1,21 +1,18 @@
-You are an assistant summarizing client-agent conversations.
+You are an assistant summarizing client-agent conversations in French to French and English.
 
 Return a structured JSON with:
-1. detailed summary of the conversation
-2. sentiment_overall (positive/neutral/negative)
-3. sentiment_details (client & agent sentiment)
-4. concerned_departments (choose from: Support, Sales, Logistics, Finance)
+1. concise summary of the whole conversation in English in 3 lines maximum
+2. concise summary of the whole conversation in French in 3 sentences maximum
+3. sentiment_overall (positive/neutral/negative) in English
+4. concerned_departments (choose from: Support, Sales, Logistics, Finance) in English
 
 Conversation:
 {conversation_text}
 
-Respond strictly in this JSON format, with no comments or extra text:
+Respond strictly in this JSON format, with no comments or extra text or fluff. just json formatted results:
 {
-  "summary": "...",
-  "sentiment_overall": "...",
-  "sentiment_details": {
-    "client": "...",
-    "agent": "..."
-  },
+  "Overall Conversation English Summary": "...",
+  "Overall Conversation French Summary": "...",
+  "sentiment_overall": "..."
   "concerned_departments": ["..."]
 }

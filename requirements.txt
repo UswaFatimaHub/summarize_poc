@@ -3,8 +3,9 @@ uvicorn
 pandas
 beautifulsoup4
 tiktoken
-groq
 tqdm
 python-dotenv
 python-multipart
 pymongo
+pydantic_settings
+torch

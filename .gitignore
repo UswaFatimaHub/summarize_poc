@@ -201,3 +201,4 @@ cython_debug/
 test.py
 test.ipynb
 data/
+uploads/

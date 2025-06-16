@@ -1,216 +1,107 @@
 import os
-import time
 import pandas as pd
 from tqdm import tqdm
 from app.utils.token_estimation import estimate_tokens
-from app.utils.file_io import save_json_file, load_json_file
 from app.utils.logger import setup_logger
 from app.utils.prompt_loader import load_prompt_template
-from app.services.cleaner import clean_text_column
-from app.config import GROQ_API_KEY, SUMMARY_DIR
-from groq import Groq
-import json
+from app.utils.cleaning import safe_parse_json, truncate_conversation
+from app.config import get_settings
+from app.db import get_records_by_opportunity_id
+from app.config import  SUMMARY_DIR
+import ollama
 import re
 from datetime import datetime
 
 logger = setup_logger(os.path.join(SUMMARY_DIR, "summarization.log"))
+settings = get_settings()
 
-client = Groq(api_key=GROQ_API_KEY)
-
-MAX_RPM = 30
-MAX_TPD = 500000
-SECONDS_PER_REQUEST = 60 / MAX_RPM
+MAX_CONTEXT_TOKENS = settings.max_context_tokens  
+MAX_OUTPUT_TOKENS = settings.max_output_tokens  
+MAX_INPUT_TOKENS = MAX_CONTEXT_TOKENS - MAX_OUTPUT_TOKENS
 
 token_used = 0
 request_count = 0
 
-PROMPT_TEMPLATE_PATH = "app/services/summarization_prompt.txt"
+
+PROMPT_TEMPLATE_PATH = settings.prompt_template_path
 prompt_template = load_prompt_template(PROMPT_TEMPLATE_PATH)
 
-def safe_parse_json(text):
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if not match:
-            raise ValueError("No JSON found.")
-        json_block = match.group()
-        json_block = re.sub(r'//.*', '', json_block)
-        return json.loads(json_block)
+import re
+
+def clean_json_response(content: str) -> str:
+    # Check if there's a JSON object in the content
+    if "{" in content and "}" in content:
+        # Remove everything before the first '{'
+        return re.sub(r'^.*?{', '{', content, flags=re.DOTALL)
+    return content
 
 def summarize_conversation(conversation: list):
     global token_used, request_count
 
-    conversation_text = ""
-    for msg in conversation:
-        sender = "Client" if msg["sender"] == "client" else "Agent"
-        conversation_text += f"{sender}: {msg['text']}\n"
+    placeholder = "{conversation_text}"
+    template_tokens = estimate_tokens(prompt_template.replace(placeholder, ""))
+    max_tokens_for_convo = MAX_INPUT_TOKENS - template_tokens
+    logger.info(f"Tokens available for conversation: {max_tokens_for_convo}")
+
+    # Truncate conversation accordingly
+    conversation_text = truncate_conversation(conversation, max_tokens_for_convo)
 
     prompt = prompt_template.replace("{conversation_text}", conversation_text)
 
+    logger.info(f"Prompt for summarization: {prompt}")
+
     input_tokens = estimate_tokens(prompt)
-    total_estimated_tokens = input_tokens + 300
+    logger.info(f"Estimated input tokens: {input_tokens}")
 
-    if token_used + total_estimated_tokens > MAX_TPD:
-        raise RuntimeError("Token limit exceeded.")
-    if request_count >= 14400:
-        raise RuntimeError("Request limit exceeded.")
+    total_estimated_tokens = input_tokens + MAX_OUTPUT_TOKENS
 
-    time.sleep(SECONDS_PER_REQUEST)
 
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+    response = ollama.chat(
+        model=settings.ollama_model,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.7
+        options={
+            "temperature": 0.1,
+            "num_predict": MAX_OUTPUT_TOKENS  # Limit to 300 output tokens
+        }
     )
 
-    content = response.choices[0].message.content
-    parsed = safe_parse_json(content)
+    content = response["message"]["content"].strip()  # Remove any extra text
+    logger.info(f"Raw summary response: {content}")
+
+    content = clean_json_response(content)
+
+
 
     token_used += total_estimated_tokens
+    logger.info(f"Total tokens used: {token_used}")
     request_count += 1
 
-    return parsed
-
-def summarize_opportunities(filepath: str):
-    logger.info(f"Starting summarization for file: {filepath}")
-    df = pd.read_csv(filepath)
-    df = clean_text_column(df)
-
-    opportunity_groups = df.groupby("opportunity_id")
-    summaries = {}
-    skipped = []
-
-    for opp_id, group in tqdm(opportunity_groups, desc="Summarizing Opportunities"):
-        logger.info(f"Processing opportunity_id: {opp_id}")
-
-        conversation = []
-        group = group.sort_values("date")
-
-        for _, row in group.iterrows():
-            text = row.get("text", "")
-            if isinstance(text, str) and text.strip():
-                sender = "client" if pd.notna(row["user_id"]) else "agent"
-                conversation.append({"sender": sender, "text": text})
-
-        if not conversation:
-            logger.warning(f"Skipping empty conversation for {opp_id}")
-            continue
-
-        try:
-            summary = summarize_conversation(conversation)
-            summaries[opp_id] = summary
-            logger.info(f"✅ Summarized opportunity_id: {opp_id}")
-        except Exception as e:
-            logger.error(f"❌ Error processing {opp_id}: {e}")
-            skipped.append(opp_id)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    summary_file = os.path.join(SUMMARY_DIR, f"summaries_{timestamp}.json")
-    save_json_file(summary_file, summaries)
-
-    logger.info(f"Summarization complete. {len(summaries)} summaries generated.")
-    if skipped:
-        logger.warning(f"Skipped {len(skipped)} opportunities: {skipped}")
+    return content
 
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    summary_file = os.path.join(SUMMARY_DIR, f"summaries_{timestamp}.json")
-    save_json_file(summary_file, summaries)
+def summarize_by_opportunity_id(opportunity_id: float):
+    logger.info(f"Starting summarization for opportunity_id: {opportunity_id}")
 
-    logger.info(f"Summarization complete. File saved at {summary_file}")
-    return summary_file
+    result = get_records_by_opportunity_id(opportunity_id)
+    records_df = pd.DataFrame(result["records"])
 
-    # return summaries
+    conversation = []
+    for _, row in records_df.iterrows():
+        text = row.get("text", "")
+        if isinstance(text, str) and text.strip():
+            sender = "client" if pd.notna(row["user_id"]) else "agent"
+            conversation.append({"sender": sender, "text": text})
 
+    if not conversation:
+        logger.warning(f"No conversation found for opportunity_id: {opportunity_id}")
+        return {"error": f"No conversation found for opportunity_id: {opportunity_id}"}
 
-
-
-# import os
-# import pandas as pd
-# from app.utils.file_io import read_csv_file, save_json_file, load_json_file
-# from app.services.cleaner import clean_text_column
-# from app.utils.token_estimation import estimate_tokens
-# from groq import Groq
-# import time
-# import json
-# import re
-
-# client = Groq(api_key="your_groq_api_key")
-
-# SECONDS_PER_REQUEST = 2  # Based on rate limits
-
-# def summarize_conversation(conversation):
-#     conversation_text = "\n".join([f"{msg['sender'].title()}: {msg['text']}" for msg in conversation])
-    
-#     prompt = f"""
-# You are an assistant summarizing client-agent conversations.
-
-# Return a structured JSON with:
-# 1. detailed summary of the conversation
-# 2. sentiment_overall (positive/neutral/negative)
-# 3. sentiment_details (client & agent sentiment)
-# 4. concerned_departments (choose from: Support, Sales, Logistics, Finance)
-
-# Conversation:
-# {conversation_text}
-
-# Respond strictly in this JSON format, with no comments or extra text:
-# {{
-#   "summary": "...",
-#   "sentiment_overall": "...",
-#   "sentiment_details": {{
-#     "client": "...",
-#     "agent": "..."
-#   }},
-#   "concerned_departments": ["..."]
-# }}
-# """
-
-#     time.sleep(SECONDS_PER_REQUEST)
-#     response = client.chat.completions.create(
-#         model="llama-3.1-8b-instant",
-#         messages=[{"role": "user", "content": prompt}],
-#         temperature=0.7
-#     )
-
-#     raw_output = response.choices[0].message.content
-
-#     match = re.search(r'\{.*\}', raw_output, re.DOTALL)
-#     if not match:
-#         raise ValueError("Invalid JSON format returned.")
-    
-#     return json.loads(match.group())
-
-
-# def summarize_opportunities(filepath: str):
-#     df = read_csv_file(filepath)
-#     df = clean_text_column(df)
-
-#     grouped = df.groupby("opportunity_id")
-#     results = {}
-
-#     for opp_id, group in grouped:
-#         group = group.sort_values("date")
-#         conversation = []
-
-#         for _, row in group.iterrows():
-#             if isinstance(row["text"], str) and row["text"].strip():
-#                 sender = "client" if row["user_id"] is not None else "agent"
-#                 conversation.append({"sender": sender, "text": row["text"]})
-
-#         if conversation:
-#             try:
-#                 summary = summarize_conversation(conversation)
-#                 results[opp_id] = summary
-#             except Exception as e:
-#                 results[opp_id] = {"error": str(e)}
-
-
-#     save_json_file(f"summaries/{os.path.basename(filepath)}_summaries.json", results)
-#     return results
-
-
-
+    try:
+        summary = summarize_conversation(conversation)
+        logger.info(f"✅ Summarized opportunity_id: {opportunity_id}")
+        return {"opportunity_id": opportunity_id, "summary": summary}
+    except Exception as e:
+        logger.error(f"❌ Error processing opportunity_id {opportunity_id}: {e}")
+        return {"error": str(e)}
 
 
