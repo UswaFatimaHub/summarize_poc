@@ -5,12 +5,10 @@ from functools import lru_cache
 
 load_dotenv()
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 LOG_DIR = os.getenv("LOG_DIR", "log_dir")
 MAX_CONTEXT_TOKENS = os.getenv("MAX_CONTEXT_TOKENS", 128000)  
 MAX_OUTPUT_TOKENS = os.getenv("MAX_OUTPUT_TOKENS", 300)
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
 

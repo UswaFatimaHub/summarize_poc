@@ -2,7 +2,7 @@ from app.core.ollama_client import send_to_ollama
 from app.core.prompt_builder import build_prompt_from_conversation
 from app.config import get_settings
 # from app.utils.logger import setup_logger
-from app.utils.cleaning import clean_json_response
+from app.utils.cleaning import clean_json_response, safe_parse_json
 from app.utils.token_estimation import estimate_tokens
 from app.services import state
 import os
@@ -21,7 +21,7 @@ def process_conversation_task( prompt_template_path: str, conversation: list, tr
 
     messages = [{"role": "user", "content": prompt}]
     content = send_to_ollama(messages)
-    cleaned = clean_json_response(content)
+    cleaned = safe_parse_json(content)
 
     if track_tokens:
         state.token_used += total_estimated_tokens

@@ -17,17 +17,6 @@ def clean_text_column(df):
     df.loc[mask, "text"] = df.loc[mask, "text"].apply(clean_html_text)
     return df
 
-def safe_parse_json(text):
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if not match:
-            raise ValueError("No JSON found.")
-        json_block = match.group()
-        json_block = re.sub(r'//.*', '', json_block)
-        return json.loads(json_block)
-    
 def truncate_conversation(conversation: list, max_tokens_for_convo: int) -> str:
     """Constructs conversation text from the end, keeping within max_tokens_for_convo."""
     reversed_conv = reversed(conversation)
@@ -52,3 +41,22 @@ def clean_json_response(content: str) -> str:
         # Remove everything before the first '{'
         return re.sub(r'^.*?{', '{', content, flags=re.DOTALL)
     return content
+
+def safe_parse_json(text):
+    cleaned_text = clean_json_response(text)
+    
+    try:
+        return json.loads(cleaned_text)
+    except json.JSONDecodeError:
+        # Try extracting { ... } block manually
+        match = re.search(r'\{.*\}', cleaned_text, re.DOTALL)
+        if match:
+            json_block = match.group()
+            # Remove inline comments
+            json_block = re.sub(r'//.*', '', json_block)
+            try:
+                return json.loads(json_block)
+            except json.JSONDecodeError:
+                pass  # Fall through to return original
+        # Return raw text
+        return text
