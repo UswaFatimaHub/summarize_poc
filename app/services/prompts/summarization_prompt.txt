@@ -3,16 +3,14 @@ You are an assistant summarizing client-agent conversations in French to French 
 Return a structured JSON with:
 1. concise summary of the whole conversation in English in 3 lines maximum
 2. concise summary of the whole conversation in French in 3 sentences maximum
-3. sentiment_overall (positive/neutral/negative) in English
-4. concerned_departments (choose from: Support, Sales, Logistics, Finance) in English
+3. concerned_departments (choose from: Support, Sales, Logistics, Finance) in English
 
 Conversation:
 {conversation_text}
 
 Respond strictly in this JSON format, with no comments or extra text or fluff. just json formatted results:
 {
-  "Overall Conversation English Summary": "...",
-  "Overall Conversation French Summary": "...",
-  "sentiment_overall": "..."
+  "overall_conversation_english_summary": "...",
+  "overall_conversation_french_summary": "...",\
   "concerned_departments": ["..."]
 }

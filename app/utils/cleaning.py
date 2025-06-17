@@ -8,13 +8,13 @@ def clean_html_text(html):
     if not isinstance(html, str):
         return ""
     soup = BeautifulSoup(html, "html.parser")
-    return "\n".join([line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip()])
+    raw_text = soup.get_text(separator="\n")
+    clean_lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    return "\n".join(clean_lines)
 
-def clean_dataframe(df):
-    mask = (df["class"] == "traction.communication.MailMessage") | \
-           (df["class"] == "traction.communication.FormClientData")
+def clean_text_column(df):
+    mask = df["class"].isin(["traction.communication.MailMessage", "traction.communication.FormClientData"])
     df.loc[mask, "text"] = df.loc[mask, "text"].apply(clean_html_text)
-    df["sender_type"] = df["user_id"].apply(lambda x: "agent" if pd.isna(x) else "client")
     return df
 
 def safe_parse_json(text):
@@ -28,7 +28,6 @@ def safe_parse_json(text):
         json_block = re.sub(r'//.*', '', json_block)
         return json.loads(json_block)
     
-
 def truncate_conversation(conversation: list, max_tokens_for_convo: int) -> str:
     """Constructs conversation text from the end, keeping within max_tokens_for_convo."""
     reversed_conv = reversed(conversation)
@@ -47,3 +46,9 @@ def truncate_conversation(conversation: list, max_tokens_for_convo: int) -> str:
 
     return ''.join(reversed(accumulated))
 
+def clean_json_response(content: str) -> str:
+    # Check if there's a JSON object in the content
+    if "{" in content and "}" in content:
+        # Remove everything before the first '{'
+        return re.sub(r'^.*?{', '{', content, flags=re.DOTALL)
+    return content

@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from app.config import get_settings
 from bson.objectid import ObjectId
-from app.services.cleaner import clean_text_column
+from app.utils.cleaning import clean_text_column
 import pandas as pd
 
 settings = get_settings()
@@ -12,7 +12,6 @@ db = client[settings.mongo_db_name]
 def create_conversation(data: dict) -> str:
     result = db.conversations.insert_one(data)
     return str(result.inserted_id)
-
 
 def get_all_conversations():
     conversations = list(db.conversations.find({}, {"_id": 0}))

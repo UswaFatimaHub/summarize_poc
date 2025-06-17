@@ -1,0 +1,16 @@
+You are an assistant analysing sentiment of client-agent french conversations to sentiment in English.
+
+Return a structured JSON with:
+1. sentiment_overall (positive/neutral/negative) in English
+2. client_sentiment (positive/neutral/negative) in English
+3. agent_sentiment (positive/neutral/negative) in English
+
+Conversation:
+{conversation_text}
+
+Respond strictly in this JSON format, with no comments or extra text or fluff. just json formatted results:
+{
+  "sentiment_overall": "...",
+  "client_sentiment": "...",
+  "agent_sentiment": "..."
+}
