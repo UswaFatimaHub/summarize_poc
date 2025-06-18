@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from app.routes import processconversation, file_ops
+from app.routes import processconversation, file_ops, frontend
+from fastapi.staticfiles import StaticFiles
 import os
 import uvicorn
 
@@ -11,11 +12,15 @@ app = FastAPI(title="Conversation Summarizer API")
 
 app.include_router(file_ops.router, prefix="/api/file", tags=["File Operations"])
 app.include_router(processconversation.router, prefix="/api", tags=["Summarization"])
+app.include_router(frontend.router)
 
-@app.get("/")
-def read_root():
-    logger.info("Root accessed")
-    return {"message": "Hello"}
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+# @app.get("/")
+# def read_root():
+#     logger.info("Root accessed")
+#     return {"message": "Hello"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))

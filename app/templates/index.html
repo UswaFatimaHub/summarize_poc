@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Conversation Tool</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <h1>Conversation Analyzer</h1>
+
+    <section>
+        <h2>📁 Upload CSV</h2>
+        <form id="upload-form">
+            <input type="file" name="file" required />
+            <button type="submit">Upload</button>
+        </form>
+        <p id="upload-status"></p>
+    </section>
+
+    <section>
+        <h2>🧹 Purge Data</h2>
+        <button id="purge-btn">Flush All</button>
+        <p id="purge-status"></p>
+    </section>
+
+    <section>
+        <h2>📊 Analyze</h2>
+        <input type="number" step="0.01" id="opp-id" placeholder="Opportunity ID" />
+        <button id="analyze-btn">Analyze</button>
+        <p id="analyze-loading" style="display:none;">⏳ Analyzing, please wait...</p>
+        <pre id="analyze-result"></pre>
+    </section>
+
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = e.target.file;
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            const res = await fetch('/api/file/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            document.getElementById('upload-status').innerText = JSON.stringify(data);
+        });
+
+        document.getElementById('purge-btn').addEventListener('click', async () => {
+            const res = await fetch('/api/file/purge', { method: 'DELETE' });
+            const data = await res.json();
+            document.getElementById('purge-status').innerText = data.message;
+        });
+
+        document.getElementById('analyze-btn').addEventListener('click', async () => {
+            const id = document.getElementById('opp-id').value;
+            if (!id) return alert("Enter an opportunity ID");
+
+            const loading = document.getElementById('analyze-loading');
+            const resultBox = document.getElementById('analyze-result');
+            resultBox.innerText = '';
+            loading.style.display = 'block';  // Show loading message
+
+            try {
+                const res = await fetch(`/api/process_conv/${id}`);
+                const data = await res.json();
+                resultBox.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                resultBox.innerText = "❌ Error: " + err.message;
+            } finally {
+                loading.style.display = 'none';  // Hide loading message
+            }
+        });
+
+    </script>
+</body>
+</html>
