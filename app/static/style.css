@@ -1,40 +1,93 @@
+/* Base Styles */
 body {
-    font-family: sans-serif;
-    margin: 2rem;
-    background-color: #f4f4f4;
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #fefaf1;
+    color: #1f2937;
 }
+
+.container {
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
 h1 {
-    color: #2c3e50;
+    font-size: 2rem;
+    color: #222;
+    margin-bottom: 1rem;
 }
+
+h2 {
+    font-size: 1.2rem;
+    color: #374151;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+
 section {
-    background: white;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-    border-radius: 6px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 2.5rem;
 }
-input, button {
-    margin-top: 0.5rem;
-    padding: 0.5rem;
+
+/* File Upload Drag Area */
+.drop-zone {
+    border: 2px dashed #cbd5e1;
+    padding: 2rem;
+    text-align: center;
+    border-radius: 10px;
+    transition: border-color 0.3s ease;
+    background-color: #f9fafb;
+    color: #6b7280;
+    cursor: pointer;
 }
+.drop-zone.dragover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* Buttons & Inputs */
+input[type="number"],
 button {
-    background: #3498db;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    margin-top: 0.5rem;
+}
+
+input[type="number"] {
+    width: 100%;
+}
+
+button {
+    background-color: #3b82f6;
     color: white;
     border: none;
     cursor: pointer;
+    transition: background-color 0.2s ease;
 }
-pre {
-    background: #eee;
-    padding: 1rem;
-    border-radius: 4px;
+
+button:hover {
+    background-color: #2563eb;
 }
+
+/* Loading Spinner */
+#analyze-loading {
+    font-style: italic;
+    color: #9ca3af;
+    margin-top: 0.5rem;
+}
+
 #analyze-loading::after {
     content: "";
     display: inline-block;
     width: 1em;
     height: 1em;
-    border: 3px solid #ccc;
-    border-top-color: #3498db;
+    border: 3px solid #d1d5db;
+    border-top-color: #3b82f6;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-left: 0.5em;
@@ -46,4 +99,13 @@ pre {
     }
 }
 
-
+/* Output */
+pre {
+    background-color: #f9fafb;
+    padding: 1rem;
+    border-left: 4px solid #60a5fa;
+    border-radius: 6px;
+    white-space: pre-wrap;
+    margin-top: 1rem;
+    font-size: 0.95rem;
+}
