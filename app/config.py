@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     sentiment_template_path: str = os.getenv("SENTIMENT_PROMPT_TEMPLATE_PATH")
     summary_template_path: str = os.getenv("SUMMARY_PROMPT_TEMPLATE_PATH")
     log_dir: str = LOG_DIR
-
+    sentiment_source: int = os.getenv("SENTIMENT_SOURCE", 0)
+    sentiment_analysis_models: str = os.getenv("SENTIMENT_ANALYSIS_MODELS", "nlptown,visalkao")
 
 @lru_cache()
 def get_settings():

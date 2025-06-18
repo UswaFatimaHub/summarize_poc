@@ -4,13 +4,11 @@ from app.config import get_settings
 # from app.utils.logger import setup_logger
 from app.services.summarization import summarize_conversation
 from app.services.sentiment import analyze_sentiment
+from app.services.sentiment2 import run_sentiment_pipeline
 from app.db import get_records_by_opportunity_id
-settings = get_settings()
-
-# logger = setup_logger(os.path.join(settings.log_dir))
 
 from app.core.logger import logger
-
+settings = get_settings()
 
 def processconv_by_opportunity_id(opportunity_id: float):
     logger.info(f"Starting processing for opportunity_id: {opportunity_id}")
@@ -31,8 +29,17 @@ def processconv_by_opportunity_id(opportunity_id: float):
 
     try:
         summary = summarize_conversation(conversation)
-        sentiment = analyze_sentiment(conversation)
-
+        if settings.sentiment_source == 1:
+            sentiment = run_sentiment_pipeline(conversation=conversation)
+        elif settings.sentiment_source == 0:
+            sentiment = analyze_sentiment(conversation)
+        else:
+            sentiment_1 =run_sentiment_pipeline(conversation=conversation)
+            sentiment_2 = analyze_sentiment(conversation)
+            sentiment = {
+                "sentiment_sa_models": sentiment_1,
+                "sentiment_llm": sentiment_2
+            }
         logger.info(f"✅ Processed opportunity_id: {opportunity_id}")
         logger.debug(f"Summary: {summary}")
         logger.debug(f"Sentiment: {sentiment}")

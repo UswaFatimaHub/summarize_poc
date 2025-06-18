@@ -9,3 +9,5 @@ python-multipart
 pymongo
 pydantic_settings
 torch
+transformers
+ollama
